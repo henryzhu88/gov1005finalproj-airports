@@ -16,15 +16,20 @@ library(lubridate)
 #The leaflet library creates the maps I will use to visualize the airport destinations.
 library(leaflet)
 
-#From the raw excel spreadsheet, I clean the variable names and am only interested in outgoing flights from Newark Airport.
+#The DT library allows me to create datatables.
+library(DT)
 
+#From the raw excel spreadsheet, I clean the variable names and am only interested in outgoing flights from Newark Airport.
+newark$dep_delay <- as.numeric(newark$dep_delay)
 newark <- read_excel("airline_data_NJ.xlsx") %>%
   clean_names() %>%
   filter(origin=="EWR") %>%
   
 #Departure times that are missing are removed.
   
-  filter(dep_time!="NA")
+  filter(dep_time!="NA") %>%
+  replace_na(list(dep_delay ="0", dep_del15 ="0", dep_delay_group="0"))
+  
 
 #In order to find the coordinates of each destination airport, I found an online database with all airline codes and their respective coordinates. 
 #The dest, lat, and long columns are located and names are cleaned.
@@ -47,8 +52,7 @@ newark<-left_join(newark,location, by="dest") %>%
   
   mutate(dep_del15 = case_when(
     dep_del15 == "0" ~ "Not Delayed",
-    dep_del15 == "1" ~ "Delayed",
-  )) 
+    dep_del15 == "1" ~ "Delayed")) 
 
 
 #count <-newark %>% group_by(DEST) %>% count()
@@ -61,18 +65,34 @@ newark<-left_join(newark,location, by="dest") %>%
 
 # Define UI for application that draws a map, with a shinytheme of superhero
 
-ui <- fluidPage(theme = shinytheme("superhero"),
+ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
+  
+#ABOUT                     
+      tabPanel("About",
+  
+      fluidPage(
    
    # Application title
    
    titlePanel("Newark Airport Flights, Jan. 2018"),
    
-   # Sidebar with a date Range input for customizing departure date, as well as an airline selector.
+   p(paste("Where are flights from Newark Airport headed? Check out some visualizations and data from all flights in January 2018."))
+   )),
+#ABOUT
    
+
+#MAP
+   # Sidebar with a date Range input for customizing departure date, as well as an airline selector.
+   tabPanel("Destination Flight Map",
+            
+            fluidPage(
+              
+            titlePanel("Newark Airport Flight Map, Jan. 2018"),
+            
    sidebarLayout(
       sidebarPanel(
         dateRangeInput("fl_date", 
-                       "Date", 
+                       "Choose a Date Range:", 
                        start = "2018-01-01", end = "2018-01-31"),
          selectInput("op_unique_carrier",
                      "Choose an Airline:",
@@ -85,19 +105,52 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                        "JetBlue"="B6",
                        "Spirit Airlines" = "NK"),
                         selected=NULL)
-      ),
+                      ),
                       
       # Show a plot of the generated map
       
       mainPanel(
-         leafletOutput("map")
-      )
-   )
+          leafletOutput("map"))
+   ))
+
+),
+
+#GRAPHS
+tabPanel("Graphs",
+         
+         fluidPage(
+           
+           titlePanel("Newark Airport Graphs"),
+           
+             
+             # Show a plot of the generated map
+             
+             mainPanel(
+               plotOutput("hist"))
+           )
+         
+),
+
+#GRAPHS
+
+#TABLE
+tabPanel("Full Flight Data",
+         
+         fluidPage(
+           titlePanel("Flight Data"),
+           
+           mainPanel(
+             DTOutput("full_table"))   
+           
+
+))
+
+#TABLE
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
- 
+  
   output$map <- renderLeaflet({
     map <- newark %>% 
       filter(fl_date == input$fl_date, op_unique_carrier == input$op_unique_carrier) %>%
@@ -111,6 +164,52 @@ server <- function(input, output) {
                 #pal = pal, 
                 #values = c("Not Delayed", "Delayed"))
    })
+  
+  output$hist <-renderPlot({
+    newark$dep_time <- as.numeric(newark$dep_time)
+    delay<- newark %>% 
+      filter(dep_del15 =="Delayed") %>%
+      arrange(fl_date) %>%
+      ggplot(aes(x=dep_time)) + geom_histogram(fill="#005DAA") +
+      theme_classic() +
+      xlab("Time of Day") +
+      ylab("Number of Delayed Flights") +
+      labs(title="Distribution of Delayed Flights Based on Time of Day", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics", caption= "Delayed Flight: Actual Departure 15 Minutes or More After Scheduled Dep. Time")+
+      scale_x_continuous(limits=c(0,2400),
+                         breaks=c(0,400,800,1200,1600,2000,2400),
+                         labels=c("12:00 AM", "4:00 AM", "8:00 AM","12:00 PM","4:00 PM","8:00 PM","12:00 AM")) +
+      scale_y_continuous(breaks=c(0,25,50,75,100,125),
+                         labels=c("0","25","50","75","100","125"))
+    delay
+  })
+  
+  output$full_table <- renderDT(
+      
+      datatablenewark<-newark %>%
+        mutate(op_unique_carrier = case_when(
+          op_unique_carrier == "UA" ~ "United Airlines",
+          op_unique_carrier == "EV" ~ "ExpressJet",
+          op_unique_carrier == "AA" ~ "American Airlines",
+          op_unique_carrier == "DL" ~ "Delta Airlinest",
+          op_unique_carrier == "WN" ~ "Southwest Airlines",
+          op_unique_carrier == "B6" ~ "JetBlue",
+          op_unique_carrier == "NK" ~ "Spirit Airlines",
+          op_unique_carrier == "EV" ~ "ExpressJet",
+          TRUE                      ~  "Other")) %>%
+        
+        transmute("Day of Month"= day_of_month,
+                  "Airline" = op_unique_carrier,
+                  "Scheduled Departure Time" =crs_dep_time,
+                  "Actual Departure Time"= dep_time,
+                  "Delay Status" = dep_del15,
+                  "Destination City"= dest_city_name),
+      rownames = FALSE,
+      options = list(
+        order = 
+          list(list(0, 'asc')))
+    )
+    
+    
 }
 
 # Run the application 
