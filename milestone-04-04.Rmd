@@ -1,0 +1,36 @@
+---
+title: "Final Project Milestone: April 5"
+author: "Henry Zhu"
+date: "April 4, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+newark <- read_excel("airline_data_NJ.xlsx")
+```
+#Description of Data
+This data is derived from the Bureau of Transportation Statistics' Reporting Carrier On-Time Performance database, specifically for Newark Airport. I focused only on outgoing flights from January 2018, and plan to map out the domestic flight locations on a U.S. map as well as look visually at data on delayed flights and patterns(ie. cities, days of the week, times of the day where delays are common). So far, I have processed this data to only the columns that are of interest and begun to experiment with filtering out delayed data. I plan to work towards using mapping data to begin to visually plot out the destination data, in which I will need some coordinates. 
+
+#Graph #1
+This graph looks at delayed flights(labeled as departure 15 or more minutes after scheduled departure time) in the month of January 2018, and what times of the day delayed flights are most common. A noticeable pattern is there is a gradual buildup of delayed flights later in the day, and a lull of delayed flights in the middle of the day.
+
+```{r, include=TRUE, echo=FALSE, warning=FALSE}
+newark$DEP_TIME <- as.numeric(newark$DEP_TIME)
+delay<- newark %>% filter(ORIGIN=="EWR", DEP_DEL15 =="1") %>%
+  arrange(FL_DATE) %>%
+  ggplot(aes(x=DEP_TIME)) + geom_histogram(bins=50,binwidth = 50,fill="#005DAA") +
+  theme_classic() +
+  xlab("Time of Day") +
+  ylab("Number of Delayed Flights")+
+labs(title="Distribution of Delayed Flights Based on Time of Day", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics", caption= "Delayed Flight: Actual Departure 15 Minutes or More After Scheduled Dep. Time")+
+scale_x_continuous(limits=c(0,2400),
+                     breaks=c(0,400,800,1200,1600,2000,2400),
+                     labels=c("12:00 AM", "4:00 AM", "8:00 AM","12:00 PM","4:00 PM","8:00 PM","12:00 AM")) +
+scale_y_continuous(breaks=c(0,25,50,75,100,125),
+                   labels=c("0","25","50","75","100","125"))
+delay
+```
