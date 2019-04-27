@@ -100,12 +100,13 @@ server <- function(input, output) {
  
   output$map <- renderLeaflet({
     map <- newark %>% 
-      filter(FL_DATE == input$FL_DATE, OP_UNIQUE_CARRIER == input$OP_UNIQUE_CARRIER) %>%
+      filter(fl_date == input$fl_date, op_unique_carrier == input$op_unique_carrier) %>%
       leaflet() %>% 
       addProviderTiles(provider = "CartoDB") %>%
       addCircleMarkers(radius = 3,
-                       #color = ~nrow(DEP_DEL15),
-                       popup = ~paste0(DEST_CITY_NAME, "-", n,"", "flights")) 
+                       #color = ~nrow(dep_del15),
+                       popup = ~dest_city_name)
+                         #~paste0(dest_city_name, "-", n,"", "flights")) 
       #addLegend(position = "bottomright",
                 #pal = pal, 
                 #values = c("Not Delayed", "Delayed"))
