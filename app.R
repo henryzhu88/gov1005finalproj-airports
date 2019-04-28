@@ -20,7 +20,7 @@ library(leaflet)
 library(DT)
 
 #From the raw excel spreadsheet, I clean the variable names and am only interested in outgoing flights from Newark Airport.
-newark$dep_delay <- as.numeric(newark$dep_delay)
+
 newark <- read_excel("airline_data_NJ.xlsx") %>%
   clean_names() %>%
   filter(origin=="EWR") %>%
@@ -52,7 +52,25 @@ newark<-left_join(newark,location, by="dest") %>%
   
   mutate(dep_del15 = case_when(
     dep_del15 == "0" ~ "Not Delayed",
-    dep_del15 == "1" ~ "Delayed")) 
+    dep_del15 == "1" ~ "Delayed")) %>%
+  
+  mutate(op_unique_carrier = case_when(
+  op_unique_carrier == "UA" ~ "United Airlines",
+  op_unique_carrier == "EV" ~ "ExpressJet",
+  op_unique_carrier == "MQ" ~ "American Airlines",
+  op_unique_carrier == "AA" ~ "American Airlines",
+  op_unique_carrier == "OH" ~ "American Airlines",
+  op_unique_carrier == "DL" ~ "Delta Airlines",
+  op_unique_carrier == "9E" ~ "Delta Airlines",
+  op_unique_carrier == "WN" ~ "Southwest Airlines",
+  op_unique_carrier == "B6" ~ "JetBlue",
+  op_unique_carrier == "NK" ~ "Spirit Airlines",
+  op_unique_carrier == "EV" ~ "ExpressJet",
+  op_unique_carrier == "AS" ~ "Alaska Airlines",
+  op_unique_carrier == "G4" ~ "Allegiant Air",
+  op_unique_carrier == "OO" ~ "Skywest Airlines",
+  op_unique_carrier == "YX" ~ "Republic Airline",
+  op_unique_carrier == "VX" ~ "Virgin America")) 
 
 
 #count <-newark %>% group_by(DEST) %>% count()
@@ -96,14 +114,18 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
                        start = "2018-01-01", end = "2018-01-31"),
          selectInput("op_unique_carrier",
                      "Choose an Airline:",
-                     c("United Airlines" = "UA",
-                       "ExpressJet" = "EV",
-                       "American Airlines"= "AA",
-                       "Republic Airline" = "YX",
-                       "Delta Airlines" = "DL",
-                       "Southwest Airlines" ="WN",
-                       "JetBlue"="B6",
-                       "Spirit Airlines" = "NK"),
+                     c("United Airlines",
+                       "ExpressJet",
+                       "American Airlines",
+                       "Delta Airlines",
+                       "Southwest Airlines",
+                       "JetBlue",
+                       "Spirit Airlines",
+                       "Alaska Airlines",
+                       "Allegiant Air",
+                       "Virgin America",
+                       "Republic Airline",
+                       "Skywest Airlines"),
                         selected=NULL)
                       ),
                       
@@ -152,14 +174,17 @@ tabPanel("Full Flight Data",
 server <- function(input, output) {
   
   output$map <- renderLeaflet({
+
     map <- newark %>% 
-      filter(fl_date == input$fl_date, op_unique_carrier == input$op_unique_carrier) %>%
+      filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], op_unique_carrier == input$op_unique_carrier) %>%
+      group_by(dest_city_name) %>%
+      mutate(count= n()) %>%
       leaflet() %>% 
       addProviderTiles(provider = "CartoDB") %>%
       addCircleMarkers(radius = 3,
+                      
                        #color = ~nrow(dep_del15),
-                       popup = ~dest_city_name)
-                         #~paste0(dest_city_name, "-", n,"", "flights")) 
+                       popup = ~paste0(dest_city_name, ":",sep=" ", count,sep=" ","flights")) 
       #addLegend(position = "bottomright",
                 #pal = pal, 
                 #values = c("Not Delayed", "Delayed"))
@@ -186,16 +211,7 @@ server <- function(input, output) {
   output$full_table <- renderDT(
       
       datatablenewark<-newark %>%
-        mutate(op_unique_carrier = case_when(
-          op_unique_carrier == "UA" ~ "United Airlines",
-          op_unique_carrier == "EV" ~ "ExpressJet",
-          op_unique_carrier == "AA" ~ "American Airlines",
-          op_unique_carrier == "DL" ~ "Delta Airlinest",
-          op_unique_carrier == "WN" ~ "Southwest Airlines",
-          op_unique_carrier == "B6" ~ "JetBlue",
-          op_unique_carrier == "NK" ~ "Spirit Airlines",
-          op_unique_carrier == "EV" ~ "ExpressJet",
-          TRUE                      ~  "Other")) %>%
+        
         
         transmute("Day of Month"= day_of_month,
                   "Airline" = op_unique_carrier,
