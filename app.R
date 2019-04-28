@@ -40,6 +40,9 @@ location <- read_csv("https://raw.githubusercontent.com/jpatokal/openflights/mas
             LONG= X8) %>%
   clean_names()
 
+#I isolated the newark airport coordinate, to be used to draw connecting line.
+
+
 #Then, I added the lat and long variables to the existing Newark flight dataset, with the joiner being destination.
 
 newark<-left_join(newark,location, by="dest") %>%
@@ -77,9 +80,9 @@ newark<-left_join(newark,location, by="dest") %>%
 
 #newark <-left_join(newark,count, by="DEST")
 
-#pal <- 
-  #colorFactor(palette = c("green", "red"), 
-              #levels = c("Not Delayed", "Delayed"))
+pal <- 
+  colorFactor(palette = c("green", "red"), 
+              levels = c("Not Delayed", "Delayed"))
 
 # Define UI for application that draws a map, with a shinytheme of superhero
 
@@ -112,7 +115,13 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
         dateRangeInput("fl_date", 
                        "Choose a Date Range:", 
                        start = "2018-01-01", end = "2018-01-31"),
-         selectInput("op_unique_carrier",
+        sliderInput("crs_dep_time", 
+                    "Select a Departure Time Range (Scheduled):", 
+                    min = min(unique(newark$crs_dep_time)), 
+                    max = max(unique(newark$crs_dep_time)),
+                    value = c(0, 2400),
+                    sep = ""), 
+        selectInput("op_unique_carrier",
                      "Choose an Airline:",
                      c("United Airlines",
                        "ExpressJet",
@@ -174,20 +183,22 @@ tabPanel("Full Flight Data",
 server <- function(input, output) {
   
   output$map <- renderLeaflet({
-
+    
     map <- newark %>% 
-      filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], op_unique_carrier == input$op_unique_carrier) %>%
+      filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
+      mutate(total=n()) %>%
       group_by(dest_city_name) %>%
       mutate(count= n()) %>%
+      ungroup() %>%
       leaflet() %>% 
       addProviderTiles(provider = "CartoDB") %>%
       addCircleMarkers(radius = 3,
                       
-                       #color = ~nrow(dep_del15),
-                       popup = ~paste0(dest_city_name, ":",sep=" ", count,sep=" ","flights")) 
-      #addLegend(position = "bottomright",
-                #pal = pal, 
-                #values = c("Not Delayed", "Delayed"))
+                       #color = ~100*(count/total)),
+                       popup = ~paste0(dest_city_name, ":",sep=" ", count,sep=" ","flights")) %>%
+      addLegend(position = "bottomright",
+                pal = pal, 
+                values = c("Not Delayed", "Delayed"))
    })
   
   output$hist <-renderPlot({
