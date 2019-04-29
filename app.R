@@ -73,7 +73,8 @@ newark<-left_join(newark,location, by="dest") %>%
   op_unique_carrier == "G4" ~ "Allegiant Air",
   op_unique_carrier == "OO" ~ "Skywest Airlines",
   op_unique_carrier == "YX" ~ "Republic Airline",
-  op_unique_carrier == "VX" ~ "Virgin America")) 
+  op_unique_carrier == "VX" ~ "Virgin America"))
+
 
 
 #count <-newark %>% group_by(DEST) %>% count()
@@ -81,8 +82,10 @@ newark<-left_join(newark,location, by="dest") %>%
 #newark <-left_join(newark,count, by="DEST")
 
 pal <- 
-  colorFactor(palette = c("green", "red"), 
+  colorFactor(palette = c("yellow", "red"), 
               levels = c("Not Delayed", "Delayed"))
+
+
 
 # Define UI for application that draws a map, with a shinytheme of superhero
 
@@ -184,21 +187,38 @@ server <- function(input, output) {
   
   output$map <- renderLeaflet({
     
-    map <- newark %>% 
+    mapdata <- newark %>% 
       filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
       mutate(total=n()) %>%
       group_by(dest_city_name) %>%
       mutate(count= n()) %>%
-      ungroup() %>%
+      mutate(dep_delay = as.numeric(dep_delay)) %>%
+      mutate(avgdel= sum(dep_delay)/count) %>%
+      mutate(avgdel = case_when(
+        avgdel < 0 ~ "A: Departed Early on Avg.",
+        avgdel >=0 & avgdel <5 ~ "B: Less than 5-Minute Avg.Delay",
+        avgdel >=5 & avgdel<15 ~ "C: 5-Minute to 15-Minute Avg.Delay",
+        avgdel >=15 & avgdel<=30 ~ "D: 15 Minute to 30-Minute Avg.Delay",
+        avgdel >=30 ~ "E: More Than 30-Minute Avg.Delay")) %>%
+      ungroup() 
+    
+    pal2 <-
+      colorFactor(palette = c("#006400","#90EE90","#FADA5E","#FF8C00","red"), 
+                  levels = c("A: Departed Early on Avg.", "B: Less than 5-Minute Avg.Delay",
+                             "C: 5-Minute to 15-Minute Avg.Delay","D: 15 Minute to 30-Minute Avg.Delay",
+                             "E: More Than 30-Minute Avg.Delay"))    
+    
+    map<- mapdata %>%
       leaflet() %>% 
       addProviderTiles(provider = "CartoDB") %>%
       addCircleMarkers(radius = 3,
-                      
-                       #color = ~100*(count/total)),
-                       popup = ~paste0(dest_city_name, ":",sep=" ", count,sep=" ","flights")) %>%
+                       color = ~pal2(avgdel),
+                       popup = ~paste0(dest_city_name, ":",sep=" ", count,sep=" ","total flights",sep=" ")) %>%
       addLegend(position = "bottomright",
-                pal = pal, 
-                values = c("Not Delayed", "Delayed"))
+                pal = pal2, 
+                values = c("A: Departed Early on Avg.", "B: Less than 5-Minute Avg.Delay",
+                           "C: 5-Minute to 15-Minute Avg.Delay","D: 15 Minute to 30-Minute Avg.Delay",
+                           "E: More Than 30-Minute Avg.Delay"))
    })
   
   output$hist <-renderPlot({
