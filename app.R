@@ -144,7 +144,8 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
       # Show a plot of the generated map
       
       mainPanel(
-          leafletOutput("map"))
+          leafletOutput("map"),
+          DTOutput("full_table"))
    ))
 
 ),
@@ -156,31 +157,43 @@ tabPanel("Graphs",
            
            titlePanel("Newark Airport Graphs"),
            
-             
+           sidebarLayout(
+             sidebarPanel(
+               dateRangeInput("fl_date2", 
+                              "Choose a Date Range:", 
+                              start = "2018-01-01", end = "2018-01-31"),
+               sliderInput("crs_dep_time2", 
+                           "Select a Departure Time Range (Scheduled):", 
+                           min = min(unique(newark$crs_dep_time)), 
+                           max = max(unique(newark$crs_dep_time)),
+                           value = c(0, 2400),
+                           sep = ""), 
+               selectInput("op_unique_carrier2",
+                           "Choose an Airline:",
+                           c("United Airlines",
+                             "ExpressJet",
+                             "American Airlines",
+                             "Delta Airlines",
+                             "Southwest Airlines",
+                             "JetBlue",
+                             "Spirit Airlines",
+                             "Alaska Airlines",
+                             "Allegiant Air",
+                             "Virgin America",
+                             "Republic Airline",
+                             "Skywest Airlines"),
+                           selected=NULL)
+             ),  
              # Show a plot of the generated map
              
              mainPanel(
                plotOutput("hist"))
-           )
+           ))
          
-),
+))
 
 #GRAPHS
 
-#TABLE
-tabPanel("Full Flight Data",
-         
-         fluidPage(
-           titlePanel("Flight Data"),
-           
-           mainPanel(
-             DTOutput("full_table"))   
-           
-
-))
-
-#TABLE
-)
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -224,7 +237,7 @@ server <- function(input, output) {
   output$hist <-renderPlot({
     newark$dep_time <- as.numeric(newark$dep_time)
     delay<- newark %>% 
-      filter(dep_del15 =="Delayed") %>%
+      filter(fl_date >= input$fl_date2[1] & fl_date <= input$fl_date2[2], crs_dep_time >= input$crs_dep_time2[1] & crs_dep_time <= input$crs_dep_time2[2],op_unique_carrier == input$op_unique_carrier2) %>%
       arrange(fl_date) %>%
       ggplot(aes(x=dep_time)) + geom_histogram(fill="#005DAA") +
       theme_classic() +
@@ -240,20 +253,21 @@ server <- function(input, output) {
   })
   
   output$full_table <- renderDT(
-      
+
       datatablenewark<-newark %>%
+        filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
+        mutate(fl_date = str_remove_all(fl_date, "T00:00:00Z")) %>%
         
-        
-        transmute("Day of Month"= day_of_month,
+        transmute("Date"= fl_date,
                   "Airline" = op_unique_carrier,
                   "Scheduled Departure Time" =crs_dep_time,
                   "Actual Departure Time"= dep_time,
-                  "Delay Status" = dep_del15,
+                  "Delay Time(min)" = dep_delay,
                   "Destination City"= dest_city_name),
       rownames = FALSE,
       options = list(
         order = 
-          list(list(0, 'asc')))
+          list(list(0, 'asc'),list(2, 'asc')))
     )
     
     
