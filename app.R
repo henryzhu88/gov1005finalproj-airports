@@ -219,18 +219,14 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
 
 ),
 
-#GRAPHS
-tabPanel("Graphs",
+#GRAPH1
+tabPanel("Graph A: Time of Day",
          
          fluidPage(
            
-           titlePanel("Newark Airport Graphs"),
+           titlePanel("Graph A"),
            
            fluidRow(
-             
-             # Header with more specific description of project
-             
-             h4("Graph 1: Flight Distribution by Time of Day")
              
            ),
            
@@ -301,11 +297,156 @@ tabPanel("Graphs",
              # Show a plot of the generated map
              
              mainPanel(
-               plotOutput("hist"),
-               plotOutput("bar"))
+               # Header with more specific description of project
+               
+               h4("Graph 1: Flight Distribution by Time of Day"),
+               
+               plotOutput("hist"))
+               
+               
+               
+              
+            
            ))
          
-))
+),
+
+tabPanel("Graph B: Delays by Airline",
+         
+         fluidPage(
+           
+           titlePanel("Graph B: Delays by Airline"),
+           
+           fluidRow(
+             
+           ),
+           
+           sidebarLayout(
+             sidebarPanel(
+               #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
+               #id of widget given
+               
+               dateRangeInput("fl_date3", 
+                              
+                              #title of widget, instructing users to choose a date range.
+                              
+                              "Choose a Date Range:", 
+                              
+                              #start and end point of date range.
+                              
+                              start = "2018-01-01", end = "2018-01-31"),
+               
+               #This widget adjusts for the time range of the departure flight, using military time.
+               #id of widget given
+               sliderInput("crs_dep_time3",
+                           
+                           #title of widget, instructing users to choose a time range
+                           
+                           "Select a Departure Time Range (Scheduled):", 
+                           
+                           #the minimum(earliest) flight level is preset, as well as the maximum.
+                           
+                           min = min(unique(newark$crs_dep_time)), 
+                           max = max(unique(newark$crs_dep_time)),
+                           
+                           #The range of values extends from 0 to 2400(military time)
+                           
+                           value = c(0, 2400),
+                           sep = "")
+               
+             ),  
+             # Show a plot of the generated map
+             
+             mainPanel(
+               # Header with more specific description of project
+               
+               h4("Graph 2: Flight Delay Distribution by Airline"),
+               
+               plotOutput("bar"))
+             
+           ))),
+           
+tabPanel("Graph C: Delays by Destination",
+                    
+                    fluidPage(
+                      
+                      titlePanel("Graph C: Delays by Destination"),
+                      
+                      fluidRow(
+                        
+                      ),
+                      
+                      sidebarLayout(
+                        sidebarPanel(
+                          #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
+                          #id of widget given
+                          
+                          dateRangeInput("fl_date4", 
+                                         
+                                         #title of widget, instructing users to choose a date range.
+                                         
+                                         "Choose a Date Range:", 
+                                         
+                                         #start and end point of date range.
+                                         
+                                         start = "2018-01-01", end = "2018-01-31"),
+                          
+                          #This widget adjusts for the time range of the departure flight, using military time.
+                          #id of widget given
+                          sliderInput("crs_dep_time4",
+                                      
+                                      #title of widget, instructing users to choose a time range
+                                      
+                                      "Select a Departure Time Range (Scheduled):", 
+                                      
+                                      #the minimum(earliest) flight level is preset, as well as the maximum.
+                                      
+                                      min = min(unique(newark$crs_dep_time)), 
+                                      max = max(unique(newark$crs_dep_time)),
+                                      
+                                      #The range of values extends from 0 to 2400(military time)
+                                      
+                                      value = c(0, 2400),
+                                      sep = ""),
+                          
+                          #This widget adjusts for the choice of your airline. Airline options are listed below
+                          #input id is selected
+                          selectInput("op_unique_carrier4",
+                                      
+                                      #title of widget, instructing individuals to select an airline.
+                                      
+                                      "Choose an Airline:",
+                                      
+                                      #list of airlines to select
+                                      
+                                      c("United Airlines",
+                                        "ExpressJet",
+                                        "American Airlines",
+                                        "Delta Airlines",
+                                        "Southwest Airlines",
+                                        "JetBlue",
+                                        "Spirit Airlines",
+                                        "Alaska Airlines",
+                                        "Allegiant Air",
+                                        "Virgin America",
+                                        "Republic Airline",
+                                        "Skywest Airlines"),
+                                      selected=NULL)
+                          
+                        ),  
+                        
+                        # Show a plot of the generated map
+                        
+                        mainPanel(
+                          # Header with more specific description of project
+                          
+                          h4("Graph 3: Flight Delay Distribution by Airline"),
+                          
+                          plotOutput("bar2"))
+                        
+                      )
+         
+)))
 
 #GRAPHS
 
@@ -449,7 +590,7 @@ server <- function(input, output) {
     airline <- mapdata %>% 
       
       #The same filter function based on the input value is used here, adjusting for changes to date and departure time.
-      filter(fl_date >= input$fl_date2[1] & fl_date <= input$fl_date2[2], crs_dep_time >= input$crs_dep_time2[1] & crs_dep_time <= input$crs_dep_time2[2]) %>%
+      filter(fl_date >= input$fl_date3[1] & fl_date <= input$fl_date3[2], crs_dep_time >= input$crs_dep_time3[1] & crs_dep_time <= input$crs_dep_time3[2]) %>%
       
       group_by(op_unique_carrier) %>%
       
@@ -464,6 +605,7 @@ server <- function(input, output) {
       group_by(op_unique_carrier) %>%
     
       #The frequency of delay is calculated through the percentage of delayed over total flights.
+      
       mutate(freqdel= delcount/aircount*100) %>%
       
       #To represent through one value, I took the mean, although it is the same value.
@@ -485,6 +627,60 @@ server <- function(input, output) {
       theme(axis.text.x = element_text(angle=60, hjust=1))
   airline
   })
+  
+  #I created a second graph that looks at distribution of delayed flights across all of the airlines, using a bar chart.
+  output$bar2 <-renderPlot({
+  
+  #Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
+  
+  mapdata$dep_time <- as.numeric(mapdata$dep_time)
+  
+  destination <- mapdata %>% 
+  
+  #The same filter function based on the input value is used here, adjusting for changes to date and departure time.
+  
+  filter(fl_date >= input$fl_date4[1] & fl_date <= input$fl_date4[2], crs_dep_time >= input$crs_dep_time4[1] & crs_dep_time <= input$crs_dep_time4[2], op_unique_carrier == input$op_unique_carrier4) %>%
+  
+  group_by(dest_city_name) %>%
+  
+  #I wanted only the number of delayed flights, taking the length.
+  mutate(delcount= length(dep_del15[dep_del15 == "Delayed"])) %>%
+  
+  #The total number of glihts is calculated.
+  mutate(aircount= n()) %>%
+  
+  #To sort by airline, I grouped by carrier.
+  
+  group_by(dest_city_name) %>%
+  
+  #The frequency of delay is calculated through the percentage of delayed over total flights.
+  mutate(freqdel= delcount/aircount*100) %>%
+  
+  #To represent through one value, I took the mean, although it is the same value.
+  
+  summarize(freqdel=mean(freqdel)) %>%
+    
+  arrange(desc(freqdel)) %>%
+    
+    head(8) %>%
+  
+  #I draw the ggplot for a histogram, with departure time distributed across the x-axis. I colored the plot dark blue.
+  
+  ggplot(aes(x=reorder(dest_city_name,-freqdel), y=freqdel)) + geom_col(fill="#8b0000") +
+  
+  #A classic theme is selected.
+  theme_classic() +
+  
+  #The axis titles are labeled.
+  
+  xlab("") +
+  ylab("% of Flights Delayed by 15 Minutes or More") +
+  labs(title="Delayed Flights by Destination, Top Cities", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics") +
+  theme(axis.text.x = element_text(angle=60, hjust=1))
+  destination
+  })
+  
+  
   
   
 #The output for the datatable below the map is represented. Since it is interactive, a change on the sidebar panel will also change the results of the table.
