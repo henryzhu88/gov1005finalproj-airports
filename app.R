@@ -89,62 +89,98 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
    
    fluidRow(
      
-     # Second header in a smaller font size
+     # Header with more specific description of project
      
      h3("Curious where in the U.S. you can fly to from Newark, NJ? How likely will my flight get delayed?"),
      
-     # Description of my project 
+     # More details about my project 
      
      p("Maybe looking at historical data from Jan 2018 will help! Scroll through these tabs to see for yourself!"),
      
+     #Line Break for spacing
+     
      br(),
+     
+     #Details about app
      
      h3("App Info:"),
      
-     # Gives the user the chance to look at the data I used themselves
+     # Hyperlinked the stats website.
      
      p("I obtained my data through the Bureau of Transportation Statistics, which can be accessed",
        tags$a(href = "https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=236",
               "here.")),
 
-     # Now you can take a look at my R code and replicate my project!
+     # Access to my Github.
      
      p("The code for this project can be accessed through my",
        tags$a(href = "https://github.com/henryzhu88/gov1005finalproj-airports",
               "GitHub."))),
    
-  
+#Inserted a picture.
    
    mainPanel(
-     
                 imageOutput("pic"))
   
-   
     )),
 #ABOUT
    
 
 #MAP
-   # Sidebar with a date Range input for customizing departure date, as well as an airline selector.
+  #Title of tab and title of panel.
+
    tabPanel("Destination Flight Map",
             
             fluidPage(
               
             titlePanel("Newark Airport Flight Map, Jan. 2018"),
-            
-   sidebarLayout(
+  
+# Sidebar with a date Range input for customizing departure date, time of day, as well as an airline selector.          
+   
+    sidebarLayout(
       sidebarPanel(
+
+#This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
+        #id of widget given
+        
         dateRangeInput("fl_date", 
+                       
+        #title of widget, instructing users to choose a date range.
+        
                        "Choose a Date Range:", 
+        
+        #start and end point of date range.
+        
                        start = "2018-01-01", end = "2018-01-31"),
-        sliderInput("crs_dep_time", 
+
+#This widget adjusts for the time range of the departure flight, using military time.
+          #id of widget given
+        sliderInput("crs_dep_time",
+                    
+          #title of widget, instructing users to choose a time range
+          
                     "Select a Departure Time Range (Scheduled):", 
+          
+          #the minimum(earliest) flight level is preset, as well as the maximum.
+          
                     min = min(unique(newark$crs_dep_time)), 
                     max = max(unique(newark$crs_dep_time)),
+          
+          #The range of values extends from 0 to 2400(military time)
+          
                     value = c(0, 2400),
                     sep = ""), 
+
+#This widget adjusts for the choice of your airline. Airline options are listed below
+      #input id is selected
         selectInput("op_unique_carrier",
+                    
+      #title of widget, instructing individuals to select an airline.
+      
                      "Choose an Airline:",
+      
+      #list of airlines to select
+      
                      c("United Airlines",
                        "ExpressJet",
                        "American Airlines",
@@ -164,6 +200,9 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
       
       mainPanel(
           leafletOutput("map"),
+          
+      #I also included the table with all of the flights that correspond to the selected parameters.
+      
           DTOutput("full_table"))
    ))
 
@@ -178,17 +217,47 @@ tabPanel("Graphs",
            
            sidebarLayout(
              sidebarPanel(
+               #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
+               #id of widget given
+               
                dateRangeInput("fl_date2", 
+                              
+                              #title of widget, instructing users to choose a date range.
+                              
                               "Choose a Date Range:", 
+                              
+                              #start and end point of date range.
+                              
                               start = "2018-01-01", end = "2018-01-31"),
-               sliderInput("crs_dep_time2", 
+               
+               #This widget adjusts for the time range of the departure flight, using military time.
+               #id of widget given
+               sliderInput("crs_dep_time2",
+                           
+                           #title of widget, instructing users to choose a time range
+                           
                            "Select a Departure Time Range (Scheduled):", 
+                           
+                           #the minimum(earliest) flight level is preset, as well as the maximum.
+                           
                            min = min(unique(newark$crs_dep_time)), 
                            max = max(unique(newark$crs_dep_time)),
+                           
+                           #The range of values extends from 0 to 2400(military time)
+                           
                            value = c(0, 2400),
                            sep = ""), 
+               
+               #This widget adjusts for the choice of your airline. Airline options are listed below
+               #input id is selected
                selectInput("op_unique_carrier2",
+                           
+                           #title of widget, instructing individuals to select an airline.
+                           
                            "Choose an Airline:",
+                           
+                           #list of airlines to select
+                           
                            c("United Airlines",
                              "ExpressJet",
                              "American Airlines",
@@ -202,6 +271,7 @@ tabPanel("Graphs",
                              "Republic Airline",
                              "Skywest Airlines"),
                            selected=NULL)
+        
              ),  
              # Show a plot of the generated map
              
@@ -217,37 +287,89 @@ tabPanel("Graphs",
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   
+#This map shows the different destinations from newark airport as well as information about delayed flights.
+  #A leaflet is generated.
   output$map <- renderLeaflet({
     
+  #I first created a variable specifically to allow me to manipulate the data needed for the map.
+    
     mapdata <- newark %>% 
+      
+      #After selecting my newark data(already modified above), the first step is to instruct shiny to filter out the data based on user choice.
+      #the input range of date is restricted to option 1 and option 2. Same for scheduled departure time.
+      #the input of the airline is also made flexible based on user choice and only the data of the selected airline is preserved.
+     
       filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
-      mutate(total=n()) %>%
+      
+      #I then grouped by the destination city to allow for a count of how many flights are incoming in that city.
+      
       group_by(dest_city_name) %>%
+      
+      #This per-city flight count is represented in a separate column called count, which will be shown dynamically in each pop-up.
+      
       mutate(count= n()) %>%
+      
+      #Next, I wanted to create an average delay time for each city.
+      
       mutate(dep_delay = as.numeric(dep_delay)) %>%
+      
+      #The formula I used was to add up the departure delay times for each city before dividing by the number of flights to each city.
+      
       mutate(avgdel= sum(dep_delay)/count) %>%
+      
+      #This number was then grouped into a new avgdel variable which categorized the delay based on its average length.
+      
       mutate(avgdel = case_when(
+        
+        #Earlier than 0 means the departed time was earlier than the scheduled time.
+        
         avgdel < 0 ~ "A: Departed Early on Avg.",
+        
+        #Each subsequent age range is then listed out and then reworded.
+        
         avgdel >=0 & avgdel <5 ~ "B: Less than 5-Minute Avg.Delay",
         avgdel >=5 & avgdel<15 ~ "C: 5-Minute to 15-Minute Avg.Delay",
         avgdel >=15 & avgdel<=30 ~ "D: 15 Minute to 30-Minute Avg.Delay",
         avgdel >=30 ~ "E: More Than 30-Minute Avg.Delay")) %>%
       ungroup() 
     
+#I created a color palette to allow for a visualization of average delay time, with early departures in green to more than 30-minute average delays in red.
+    
     pal2 <-
       colorFactor(palette = c("#006400","#90EE90","#FADA5E","#FF8C00","red"), 
                   levels = c("A: Departed Early on Avg.", "B: Less than 5-Minute Avg.Delay",
                              "C: 5-Minute to 15-Minute Avg.Delay","D: 15 Minute to 30-Minute Avg.Delay",
                              "E: More Than 30-Minute Avg.Delay"))    
-    
+ 
+#Using the adjusted map data, a leaflet map is created.   
     map<- mapdata %>%
       leaflet() %>% 
+      
+  #The theme of CartoDB is selected. 
+      
       addProviderTiles(provider = "CartoDB") %>%
+      
+  #Circlemarkers are added with a stable radius of 3.
       addCircleMarkers(radius = 3,
+                       
+  #the color varies based on the avg delay time of flights in the selected parameters, using the palette created above.
+  
                        color = ~pal2(avgdel),
+  
+  #An interactive pop-up is created which lists the city chosen as well as how many flights are incoming to that city from Newark under the given parameters.
+  #This flight number is flexible and can change.
+  
                        popup = ~paste0(dest_city_name, ":",sep=" ", count,sep=" ","total flights",sep=" ")) %>%
+
+#A legend is created that is based on a green-red color pallette, with green signifying early departures while red signifies extremely-late departures.
+      #Legend positioned in the bottom right corner
       addLegend(position = "bottomright",
+          
+      #palette selected
                 pal = pal2, 
+      
+      #values listed out. Needed to put the alphabetical listing to preserve ordering.
+      
                 values = c("A: Departed Early on Avg.", "B: Less than 5-Minute Avg.Delay",
                            "C: 5-Minute to 15-Minute Avg.Delay","D: 15 Minute to 30-Minute Avg.Delay",
                            "E: More Than 30-Minute Avg.Delay"))
