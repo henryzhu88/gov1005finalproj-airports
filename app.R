@@ -585,9 +585,9 @@ server <- function(input, output) {
     
     #Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
     
-    mapdata$dep_time <- as.numeric(mapdata$dep_time)
+    newark$dep_time <- as.numeric(newark$dep_time)
     
-    airline <- mapdata %>% 
+    airline <- newark %>% 
       
       #The same filter function based on the input value is used here, adjusting for changes to date and departure time.
       filter(fl_date >= input$fl_date3[1] & fl_date <= input$fl_date3[2], crs_dep_time >= input$crs_dep_time3[1] & crs_dep_time <= input$crs_dep_time3[2]) %>%
@@ -595,7 +595,7 @@ server <- function(input, output) {
       group_by(op_unique_carrier) %>%
       
       #I wanted only the number of delayed flights, taking the length.
-      mutate(delcount= length(dep_del15[dep_del15 == "Delayed"])) %>%
+      mutate(delcount= length(dep_del15[dep_del15 == "Delayed for More than 15 Minutes"])) %>%
       
       #The total number of glihts is calculated.
       mutate(aircount= n()) %>%
@@ -628,28 +628,28 @@ server <- function(input, output) {
   airline
   })
   
-  #I created a second graph that looks at distribution of delayed flights across all of the airlines, using a bar chart.
+  #I created a third graph that looks at distribution of delayed flights across all of the destinations, using a bar chart.
   output$bar2 <-renderPlot({
   
   #Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
   
-  mapdata$dep_time <- as.numeric(mapdata$dep_time)
+  newark$dep_time <- as.numeric(newark$dep_time)
   
-  destination <- mapdata %>% 
+  destination <- newark %>% 
   
-  #The same filter function based on the input value is used here, adjusting for changes to date and departure time.
+  #The same filter function based on the input value is used here, adjusting for changes to date, departure time, and airline.
   
   filter(fl_date >= input$fl_date4[1] & fl_date <= input$fl_date4[2], crs_dep_time >= input$crs_dep_time4[1] & crs_dep_time <= input$crs_dep_time4[2], op_unique_carrier == input$op_unique_carrier4) %>%
   
   group_by(dest_city_name) %>%
   
   #I wanted only the number of delayed flights, taking the length.
-  mutate(delcount= length(dep_del15[dep_del15 == "Delayed"])) %>%
+  mutate(delcount= length(dep_del15[dep_del15 == "Delayed for More than 15 Minutes"])) %>%
   
-  #The total number of glihts is calculated.
+  #The total number of flights is calculated.
   mutate(aircount= n()) %>%
   
-  #To sort by airline, I grouped by carrier.
+  #To sort by destination, I grouped by city name.
   
   group_by(dest_city_name) %>%
   
@@ -662,9 +662,11 @@ server <- function(input, output) {
     
   arrange(desc(freqdel)) %>%
     
+  #Only the top 8 values are shown for simplicity.
+    
     head(8) %>%
   
-  #I draw the ggplot for a histogram, with departure time distributed across the x-axis. I colored the plot dark blue.
+  #I draw the ggplot for a histogram, with destinaton distributed across the x-axis. I colored the plot dark red. X axis is arranged in descending y order value.
   
   ggplot(aes(x=reorder(dest_city_name,-freqdel), y=freqdel)) + geom_col(fill="#8b0000") +
   
