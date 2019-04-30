@@ -51,8 +51,8 @@ newark<-left_join(newark,location, by="dest") %>%
 #I coded a departure delay of more than 15 minutes to signify delayed, while anything under a +15 minute mark was considered not delayed.
   
   mutate(dep_del15 = case_when(
-    dep_del15 == "0" ~ "Not Delayed",
-    dep_del15 == "1" ~ "Delayed")) %>%
+    dep_del15 == "0" ~ "Not Delayed for More than 15 Minutes",
+    dep_del15 == "1" ~ "Delayed for More than 15 Minutes")) %>%
   
 #I recoded the carrier codes to equate to each respective airline. Some regional companies(i.e. American Eagle) are subsidaries of larger airline companies and were grouped together.
   
@@ -133,7 +133,18 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
             
             fluidPage(
               
-            titlePanel("Newark Airport Flight Map, Jan. 2018"),
+            titlePanel("Flight Map Visualization"),
+            
+            fluidRow(
+              
+              # Header with more specific description of project
+              
+              h4("Step 1: Customize your range and airline!"),                 
+              h4("Step 2: View results on map! Click on the cities!"),
+              h4("Step 3: See detailed results in the table below.")
+              
+              ),
+              
   
 # Sidebar with a date Range input for customizing departure date, time of day, as well as an airline selector.          
    
@@ -215,6 +226,14 @@ tabPanel("Graphs",
            
            titlePanel("Newark Airport Graphs"),
            
+           fluidRow(
+             
+             # Header with more specific description of project
+             
+             h4("Graph 1: Flight Distribution by Time of Day")
+             
+           ),
+           
            sidebarLayout(
              sidebarPanel(
                #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
@@ -270,13 +289,20 @@ tabPanel("Graphs",
                              "Virgin America",
                              "Republic Airline",
                              "Skywest Airlines"),
-                           selected=NULL)
+                           selected=NULL),
+               
+               #This checkbox was created to differentiate between delayed and non-delayed flights
+               
+               checkboxGroupInput("delaycheck","Flight Status:",
+                                  c("Not Delayed for More than 15 Minutes","Delayed for More than 15 Minutes"),
+                                  selected = c("Not Delayed for More than 15 Minutes","Delayed for More than 15 Minutes"))
         
              ),  
              # Show a plot of the generated map
              
              mainPanel(
-               plotOutput("hist"))
+               plotOutput("hist"),
+               plotOutput("bar"))
            ))
          
 ))
@@ -298,7 +324,8 @@ server <- function(input, output) {
       #After selecting my newark data(already modified above), the first step is to instruct shiny to filter out the data based on user choice.
       #the input range of date is restricted to option 1 and option 2. Same for scheduled departure time.
       #the input of the airline is also made flexible based on user choice and only the data of the selected airline is preserved.
-     
+      #the input of flight status is also added.
+      
       filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
       
       #I then grouped by the destination city to allow for a count of how many flights are incoming in that city.
@@ -373,6 +400,7 @@ server <- function(input, output) {
                 values = c("A: Departed Early on Avg.", "B: Less than 5-Minute Avg.Delay",
                            "C: 5-Minute to 15-Minute Avg.Delay","D: 15 Minute to 30-Minute Avg.Delay",
                            "E: More Than 30-Minute Avg.Delay"))
+    
    })
   
 #I generated a histogram that shows distribution of delays according to time of day.
@@ -386,12 +414,12 @@ server <- function(input, output) {
     delay<- newark %>% 
 
 #The same filter function based on the input value is used here, adjusting for changes to date, departure time, and airline.
-      filter(fl_date >= input$fl_date2[1] & fl_date <= input$fl_date2[2], crs_dep_time >= input$crs_dep_time2[1] & crs_dep_time <= input$crs_dep_time2[2],op_unique_carrier == input$op_unique_carrier2) %>%
+      filter(fl_date >= input$fl_date2[1] & fl_date <= input$fl_date2[2], crs_dep_time >= input$crs_dep_time2[1] & crs_dep_time <= input$crs_dep_time2[2],op_unique_carrier == input$op_unique_carrier2, dep_del15 == input$delaycheck) %>%
       arrange(fl_date) %>%
       
 #I draw the ggplot for a histogram, with departure time distributed across the x-axis. I colored the plot dark blue.
       
-      ggplot(aes(x=dep_time)) + geom_histogram(fill="#005DAA") +
+      ggplot(aes(x=dep_time)) + geom_histogram(binwidth=50, fill="#005DAA") +
 
 #A classic theme is selected.
       theme_classic() +
@@ -399,21 +427,65 @@ server <- function(input, output) {
 #The axis titles are labeled, with clarification that a delay here is signified as 15 minutes after scheduled departure time.
       
       xlab("Time of Day") +
-      ylab("Number of Delayed Flights") +
-      labs(title="Distribution of Delayed Flights Based on Time of Day", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics", caption= "Delayed Flight: Actual Departure 15 Minutes or More After Scheduled Dep. Time")+
+      ylab("Number of Flights") +
+      labs(title="Distribution of Flights Based on Time of Day", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics", caption= "Delayed Flight: Actual Departure 15 Minutes or More After Scheduled Dep. Time")+
 
 #The x-axis is scaled to represent ticks at every four hours and encompasses the span of one 24-day.
       
       scale_x_continuous(limits=c(0,2400),
                          breaks=c(0,400,800,1200,1600,2000,2400),
-                         labels=c("12:00 AM", "4:00 AM", "8:00 AM","12:00 PM","4:00 PM","8:00 PM","12:00 AM")) +
+                         labels=c("12:00 AM", "4:00 AM", "8:00 AM","12:00 PM","4:00 PM","8:00 PM","12:00 AM"))
 
-#The y-axis is scaled to represent counts of flight, by 25.
-      
-      scale_y_continuous(breaks=c(0,25,50,75,100,125),
-                         labels=c("0","25","50","75","100","125"))
     delay
   })
+  
+  #I created a second graph that looks at distribution of delayed flights across all of the airlines, using a bar chart.
+  output$bar <-renderPlot({
+    
+    #Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
+    
+    mapdata$dep_time <- as.numeric(mapdata$dep_time)
+    
+    airline <- mapdata %>% 
+      
+      #The same filter function based on the input value is used here, adjusting for changes to date and departure time.
+      filter(fl_date >= input$fl_date2[1] & fl_date <= input$fl_date2[2], crs_dep_time >= input$crs_dep_time2[1] & crs_dep_time <= input$crs_dep_time2[2]) %>%
+      
+      group_by(op_unique_carrier) %>%
+      
+      #I wanted only the number of delayed flights, taking the length.
+      mutate(delcount= length(dep_del15[dep_del15 == "Delayed"])) %>%
+      
+      #The total number of glihts is calculated.
+      mutate(aircount= n()) %>%
+      
+      #To sort by airline, I grouped by carrier.
+      
+      group_by(op_unique_carrier) %>%
+    
+      #The frequency of delay is calculated through the percentage of delayed over total flights.
+      mutate(freqdel= delcount/aircount*100) %>%
+      
+      #To represent through one value, I took the mean, although it is the same value.
+      
+      summarize(freqdel=mean(freqdel)) %>%
+      
+      #I draw the ggplot for a histogram, with departure time distributed across the x-axis. I colored the plot dark blue.
+      
+      ggplot(aes(x=op_unique_carrier, y=freqdel)) + geom_col(fill="#C0C0C0") +
+      
+      #A classic theme is selected.
+      theme_classic() +
+      
+      #The axis titles are labeled.
+      
+      xlab("") +
+      ylab("Percentage of Flights Delayed by 15 Minutes or More(%)") +
+      labs(title="Delayed Flights by Airline", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics") +
+      theme(axis.text.x = element_text(angle=60, hjust=1))
+  airline
+  })
+  
   
 #The output for the datatable below the map is represented. Since it is interactive, a change on the sidebar panel will also change the results of the table.
   
