@@ -25,7 +25,7 @@ newark <- read_excel("airline_data_NJ.xlsx") %>%
   clean_names() %>%
   filter(origin=="EWR") %>%
   
-#Departure times that are missing are removed.
+#Departure times that are missing are removed. NA delay times are designated as zero.
   
   filter(dep_time!="NA") %>%
   replace_na(list(dep_delay ="0", dep_del15 ="0", dep_delay_group="0"))
@@ -40,9 +40,6 @@ location <- read_csv("https://raw.githubusercontent.com/jpatokal/openflights/mas
             LONG= X8) %>%
   clean_names()
 
-#I isolated the newark airport coordinate, to be used to draw connecting line.
-
-
 #Then, I added the lat and long variables to the existing Newark flight dataset, with the joiner being destination.
 
 newark<-left_join(newark,location, by="dest") %>%
@@ -56,6 +53,8 @@ newark<-left_join(newark,location, by="dest") %>%
   mutate(dep_del15 = case_when(
     dep_del15 == "0" ~ "Not Delayed",
     dep_del15 == "1" ~ "Delayed")) %>%
+  
+#I recoded the carrier codes to equate to each respective airline. Some regional companies(i.e. American Eagle) are subsidaries of larger airline companies and were grouped together.
   
   mutate(op_unique_carrier = case_when(
   op_unique_carrier == "UA" ~ "United Airlines",
@@ -75,18 +74,6 @@ newark<-left_join(newark,location, by="dest") %>%
   op_unique_carrier == "YX" ~ "Republic Airline",
   op_unique_carrier == "VX" ~ "Virgin America"))
 
-
-
-#count <-newark %>% group_by(DEST) %>% count()
-
-#newark <-left_join(newark,count, by="DEST")
-
-pal <- 
-  colorFactor(palette = c("yellow", "red"), 
-              levels = c("Not Delayed", "Delayed"))
-
-
-
 # Define UI for application that draws a map, with a shinytheme of superhero
 
 ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
@@ -98,10 +85,42 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
    
    # Application title
    
-   titlePanel("Newark Airport Flights, Jan. 2018"),
+   titlePanel(h1("Welcome to Newark Liberty International Airport!")),
    
-   p(paste("Where are flights from Newark Airport headed? Check out some visualizations and data from all flights in January 2018."))
-   )),
+   fluidRow(
+     
+     # Second header in a smaller font size
+     
+     h3("Curious where in the U.S. you can fly to from Newark, NJ? How likely will my flight get delayed?"),
+     
+     # Description of my project 
+     
+     p("Maybe looking at historical data from Jan 2018 will help! Scroll through these tabs to see for yourself!"),
+     
+     br(),
+     
+     h3("App Info:"),
+     
+     # Gives the user the chance to look at the data I used themselves
+     
+     p("I obtained my data through the Bureau of Transportation Statistics, which can be accessed",
+       tags$a(href = "https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=236",
+              "here.")),
+
+     # Now you can take a look at my R code and replicate my project!
+     
+     p("The code for this project can be accessed through my",
+       tags$a(href = "https://github.com/henryzhu88/gov1005finalproj-airports",
+              "GitHub."))),
+   
+  
+   
+   mainPanel(
+     
+                imageOutput("pic"))
+  
+   
+    )),
 #ABOUT
    
 
@@ -234,29 +253,61 @@ server <- function(input, output) {
                            "E: More Than 30-Minute Avg.Delay"))
    })
   
+#I generated a histogram that shows distribution of delays according to time of day.
+  
   output$hist <-renderPlot({
+  
+#Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
+    
     newark$dep_time <- as.numeric(newark$dep_time)
+
     delay<- newark %>% 
+
+#The same filter function based on the input value is used here, adjusting for changes to date, departure time, and airline.
       filter(fl_date >= input$fl_date2[1] & fl_date <= input$fl_date2[2], crs_dep_time >= input$crs_dep_time2[1] & crs_dep_time <= input$crs_dep_time2[2],op_unique_carrier == input$op_unique_carrier2) %>%
       arrange(fl_date) %>%
+      
+#I draw the ggplot for a histogram, with departure time distributed across the x-axis. I colored the plot dark blue.
+      
       ggplot(aes(x=dep_time)) + geom_histogram(fill="#005DAA") +
+
+#A classic theme is selected.
       theme_classic() +
+
+#The axis titles are labeled, with clarification that a delay here is signified as 15 minutes after scheduled departure time.
+      
       xlab("Time of Day") +
       ylab("Number of Delayed Flights") +
       labs(title="Distribution of Delayed Flights Based on Time of Day", subtitle="Newark Airport, January 2018, Bureau of Transportation Statistics", caption= "Delayed Flight: Actual Departure 15 Minutes or More After Scheduled Dep. Time")+
+
+#The x-axis is scaled to represent ticks at every four hours and encompasses the span of one 24-day.
+      
       scale_x_continuous(limits=c(0,2400),
                          breaks=c(0,400,800,1200,1600,2000,2400),
                          labels=c("12:00 AM", "4:00 AM", "8:00 AM","12:00 PM","4:00 PM","8:00 PM","12:00 AM")) +
+
+#The y-axis is scaled to represent counts of flight, by 25.
+      
       scale_y_continuous(breaks=c(0,25,50,75,100,125),
                          labels=c("0","25","50","75","100","125"))
     delay
   })
   
+#The output for the datatable below the map is represented. Since it is interactive, a change on the sidebar panel will also change the results of the table.
+  
   output$full_table <- renderDT(
 
       datatablenewark<-newark %>%
-        filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
-        mutate(fl_date = str_remove_all(fl_date, "T00:00:00Z")) %>%
+
+#The same filter function based on the input value is used here, adjusting for changes to date, departure time, and airline.
+        
+      filter(fl_date >= input$fl_date[1] & fl_date <= input$fl_date[2], crs_dep_time >= input$crs_dep_time[1] & crs_dep_time <= input$crs_dep_time[2],op_unique_carrier == input$op_unique_carrier) %>%
+  
+#Only the date(YYYY-MM-DD) is needed in the Date, so I removed the extraneous output.
+  
+       mutate(fl_date = str_remove_all(fl_date, "T00:00:00Z")) %>%
+        
+#I renamed each of the columns into readable format and contained my table to only these values.
         
         transmute("Date"= fl_date,
                   "Airline" = op_unique_carrier,
@@ -264,13 +315,20 @@ server <- function(input, output) {
                   "Actual Departure Time"= dep_time,
                   "Delay Time(min)" = dep_delay,
                   "Destination City"= dest_city_name),
-      rownames = FALSE,
-      options = list(
+
+#There is no need to show the rownames. Additionally, I made sure the first date and first time are listed first through organizing those two columns in ascending order.
+      
+        rownames = FALSE,
+        options = list(
         order = 
           list(list(0, 'asc'),list(2, 'asc')))
     )
-    
-    
+  
+output$pic <- renderImage({  
+  list(src="airportpic.jpg",
+       contentType="image/gif")
+}, deleteFile = FALSE)
+
 }
 
 # Run the application 
