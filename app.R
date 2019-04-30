@@ -440,7 +440,7 @@ tabPanel("Graph C: Delays by Destination",
                         mainPanel(
                           # Header with more specific description of project
                           
-                          h4("Graph 3: Flight Delay Distribution by Airline"),
+                          h4("Graph 3: Flight Delay Distribution by Destination"),
                           
                           plotOutput("bar2"))
                         
