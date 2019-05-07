@@ -74,74 +74,46 @@ newark<-left_join(newark,location, by="dest") %>%
   op_unique_carrier == "YX" ~ "Republic Airline",
   op_unique_carrier == "VX" ~ "Virgin America"))
 
-# Define UI for application that draws a map, with a shinytheme of superhero
+# Define UI for application that draws a map, with a shinytheme of superhero. App title is given.
 
-ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
-  
-#ABOUT                     
-      tabPanel("About",
-  
-      fluidPage(
-   
-   # Application title
-   
-   titlePanel(h1("Welcome to Newark Liberty International Airport!")),
-   
-   fluidRow(
-     
-     # Header with more specific description of project
-     
-     h3("Curious where in the U.S. you can fly to from Newark, NJ? How likely will my flight get delayed?"),
-     
-     # More details about my project 
-     
-     p("Maybe looking at historical data from Jan 2018 will help! Scroll through these tabs to see for yourself!"),
-     
-     #Line Break for spacing
-     
-     br(),
-     
-     #Details about app
-     
-     h3("App Info:"),
-     
-     # Hyperlinked the stats website.
-     
-     p("I obtained my data through the Bureau of Transportation Statistics, which can be accessed",
-       tags$a(href = "https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=236",
-              "here.")),
+ui <- navbarPage("Flights From Newark Liberty International Airport, January 2018",theme = shinytheme("sandstone"),
 
-     # Access to my Github.
-     
-     p("The code for this project can be accessed through my",
-       tags$a(href = "https://github.com/henryzhu88/gov1005finalproj-airports",
-              "GitHub."))),
-   
-#Inserted a picture.
-   
-   mainPanel(
-                imageOutput("pic"))
-  
-    )),
-#ABOUT
-   
+#MAP(flight map plotting destination points is created)
 
-#MAP
   #Title of tab and title of panel.
 
    tabPanel("Destination Flight Map",
             
             fluidPage(
               
-            titlePanel("Flight Map Visualization"),
-            
+              titlePanel(h1("Welcome to Newark Liberty International Airport!")),
+ 
             fluidRow(
-              
               # Header with more specific description of project
               
-              h4("Step 1: Customize your range and airline!"),                 
+              h3("Curious where in the U.S. you can fly to from Newark, NJ? How likely will my flight get delayed?"),
+              
+              # More details about my project 
+              
+              p("Maybe looking at historical data from Jan 2018 will help!"),
+              
+              p("Below, I have plotted in this map all the flight destinations from Newark Airport. Follow the instructions to explore the map!"),
+              
+              #Line Break for spacing
+              
+              br(),
+              
+              h2("Flight Map Visualization"),
+
+              # Header with more specific description of how to navigate through the map.
+              
+              h4("Step 1: Customize your date/time range and airline!"),
+                p("*The earliest flight departed at 5 AM, and the last flight departed at 10:54 PM."),
+                p("*All airlines are shown. Note that Newark is a United Hub, so there will be a high number of options."),
               h4("Step 2: View results on map! Click on the cities!"),
-              h4("Step 3: See detailed results in the table below.")
+                p("*In each city pop-up, the number of arriving flights in that given range and for that airline will be shown. This number changes based on your input!"),
+                p("*See the color-coded key. All of the delay time for arriving flights are averaged. Super-delayed cities are labeled in red!"),
+              h4("Step 3: See more detailed results of the flights selected in the table below. Use the Search Bar to look at specific cities!")
               
               ),
               
@@ -219,12 +191,19 @@ ui <- navbarPage("Newark Flights, Jan 2018",theme = shinytheme("sandstone"),
 
 ),
 
-#GRAPH1
+#GRAPH1(histogram of flight count based on time of day)
+
+#Title of Tab is given
+
 tabPanel("Graph A: Time of Day",
          
          fluidPage(
            
-           titlePanel("Graph A"),
+           titlePanel("Graph A: Flight Distribution Based on Time of Day"),
+           
+#Description of histogram
+
+           h4("This histogram tracks flight count according to time of day. Only flights delayed by more than 15 minutes can be chosen through unchecking the 'Not Delayed' box."),
            
            fluidRow(
              
@@ -232,6 +211,7 @@ tabPanel("Graph A: Time of Day",
            
            sidebarLayout(
              sidebarPanel(
+               
                #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
                #id of widget given
                
@@ -247,6 +227,7 @@ tabPanel("Graph A: Time of Day",
                
                #This widget adjusts for the time range of the departure flight, using military time.
                #id of widget given
+               
                sliderInput("crs_dep_time2",
                            
                            #title of widget, instructing users to choose a time range
@@ -265,6 +246,7 @@ tabPanel("Graph A: Time of Day",
                
                #This widget adjusts for the choice of your airline. Airline options are listed below
                #input id is selected
+               
                selectInput("op_unique_carrier2",
                            
                            #title of widget, instructing individuals to select an airline.
@@ -294,22 +276,29 @@ tabPanel("Graph A: Time of Day",
                                   selected = c("Not Delayed for More than 15 Minutes","Delayed for More than 15 Minutes"))
         
              ),  
-             # Show a plot of the generated map
+             
+             # Show a plot of the generated histogram
              
              mainPanel(
-               # Header with more specific description of project
-               
-               h4("Graph 1: Flight Distribution by Time of Day"),
                
                plotOutput("hist"))
-               
-               
-               
-              
-            
-           ))
+     
+           ),
+           
+            #Some observations are described
+
+           h3("Cool Observations:"),
+           
+           p("*Note how delayed flights appear to accumulate later on in the day!"),
+           p("*Note how there appears to be less flights that take off during lunchtime.")
+           
+           )
          
 ),
+
+#GRAPH2(bar chart representing delays by airline)
+
+#Title of tab
 
 tabPanel("Graph B: Delays by Airline",
          
@@ -317,12 +306,17 @@ tabPanel("Graph B: Delays by Airline",
            
            titlePanel("Graph B: Delays by Airline"),
            
+           #More information about bar graph
+           
+           h4("This graph tracks which airlines have the highest proportion of flights that are delayed by more than 15 minutes in the chosen interval. All airlines are shown in the x-axis in descending order."),
+           
            fluidRow(
              
            ),
            
            sidebarLayout(
              sidebarPanel(
+               
                #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
                #id of widget given
                
@@ -338,6 +332,7 @@ tabPanel("Graph B: Delays by Airline",
                
                #This widget adjusts for the time range of the departure flight, using military time.
                #id of widget given
+               
                sliderInput("crs_dep_time3",
                            
                            #title of widget, instructing users to choose a time range
@@ -355,22 +350,39 @@ tabPanel("Graph B: Delays by Airline",
                            sep = "")
                
              ),  
-             # Show a plot of the generated map
+             
+             # Show a plot of the generated bar chart
              
              mainPanel(
-               # Header with more specific description of project
-               
-               h4("Graph 2: Flight Delay Distribution by Airline"),
-               
+  
                plotOutput("bar"))
              
-           ))),
+           ),
            
+           #Some observations are named
+           
+           h3("Cool Observations:"),
+           
+           p("*Note how JetBlue appears to be the airline that is the most delayed!"),
+           p("*Note how United appears to be in the middle in terms of airline delays. Quite good for being a hub!")
+           
+           )),
+           
+
+#GRAPH3(bar chart of delay distribution by destination)
+
+#Title of tab is provided
+
 tabPanel("Graph C: Delays by Destination",
                     
                     fluidPage(
                       
                       titlePanel("Graph C: Delays by Destination"),
+                      
+                      #More information about bar chart
+                      
+                      h4("This graph tracks which cities have the highest proportion of flights that are delayed by more than 15 minutes in the chosen interval. A maximum of the top 8 'most delayed' cities are shown in descending order, if there were at least 8 city options."),
+                        
                       
                       fluidRow(
                         
@@ -378,6 +390,7 @@ tabPanel("Graph C: Delays by Destination",
                       
                       sidebarLayout(
                         sidebarPanel(
+                          
                           #This widget adjusts for the date range of interest, which I restricted to the month of January in 2018.
                           #id of widget given
                           
@@ -393,6 +406,7 @@ tabPanel("Graph C: Delays by Destination",
                           
                           #This widget adjusts for the time range of the departure flight, using military time.
                           #id of widget given
+                          
                           sliderInput("crs_dep_time4",
                                       
                                       #title of widget, instructing users to choose a time range
@@ -411,6 +425,7 @@ tabPanel("Graph C: Delays by Destination",
                           
                           #This widget adjusts for the choice of your airline. Airline options are listed below
                           #input id is selected
+                          
                           selectInput("op_unique_carrier4",
                                       
                                       #title of widget, instructing individuals to select an airline.
@@ -435,27 +450,79 @@ tabPanel("Graph C: Delays by Destination",
                           
                         ),  
                         
-                        # Show a plot of the generated map
+                        # Show a plot of the generated bar chart
                         
                         mainPanel(
-                          # Header with more specific description of project
-                          
-                          h4("Graph 3: Flight Delay Distribution by Destination"),
                           
                           plotOutput("bar2"))
                         
-                      )
+                      ),
+                      
+                      #Observations are listed
+                      
+                      h3("Cool Observations:"),
+                      
+                      p("*Note how 100% of the flights headed to Pittsburgh from United were delayed 15+ minutes!"),
+                      p("*Note how a greater proportion of flights are delayed later on in the day for Delta flights!")
          
-)))
+)),
+
+#ABOUT           
+
+tabPanel("About",
+         
+         fluidPage(
+           
+           
+           fluidRow(
+             
+             #Details about app
+             
+             h3("App Info:"),
+             
+             # Hyperlinked the stats website.
+             
+             p("I obtained my data through the Bureau of Transportation Statistics, which can be accessed",
+               tags$a(href = "https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=236",
+                      "here.")),
+             
+             # Access to my Github.
+             
+             p("The code for this project can be accessed through my",
+               tags$a(href = "https://github.com/henryzhu88/gov1005finalproj-airports",
+                      "GitHub.")),
+             
+             br(),
+             
+             #Details about app
+             
+             h3("Personal Info:"),
+             
+             # Provided name and email.
+             
+             p("Name: Henry Zhu"),
+             p("Email: hzhu@college.harvard.edu")
+             
+           ),
+           
+           #Inserted a picture.
+           
+           mainPanel(
+             imageOutput("pic"))
+           
+         ))
+#ABOUT
+
+)
 
 #GRAPHS
 
-
-# Define server logic required to draw a histogram
+# Define server logic required to show my outputs
 server <- function(input, output) {
   
 #This map shows the different destinations from newark airport as well as information about delayed flights.
   #A leaflet is generated.
+  
   output$map <- renderLeaflet({
     
   #I first created a variable specifically to allow me to manipulate the data needed for the map.
@@ -531,6 +598,7 @@ server <- function(input, output) {
 
 #A legend is created that is based on a green-red color pallette, with green signifying early departures while red signifies extremely-late departures.
       #Legend positioned in the bottom right corner
+      
       addLegend(position = "bottomright",
           
       #palette selected
@@ -552,6 +620,10 @@ server <- function(input, output) {
     
     newark$dep_time <- as.numeric(newark$dep_time)
 
+#Created an if statement to ensure no error message appears if no delay designation is selected.
+    
+    if(length(input$delaycheck) != 0) {
+      
     delay<- newark %>% 
 
 #The same filter function based on the input value is used here, adjusting for changes to date, departure time, and airline.
@@ -577,10 +649,11 @@ server <- function(input, output) {
                          breaks=c(0,400,800,1200,1600,2000,2400),
                          labels=c("12:00 AM", "4:00 AM", "8:00 AM","12:00 PM","4:00 PM","8:00 PM","12:00 AM"))
 
-    delay
+    delay}
   })
   
   #I created a second graph that looks at distribution of delayed flights across all of the airlines, using a bar chart.
+  
   output$bar <-renderPlot({
     
     #Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
@@ -590,14 +663,17 @@ server <- function(input, output) {
     airline <- newark %>% 
       
       #The same filter function based on the input value is used here, adjusting for changes to date and departure time.
-      filter(fl_date >= input$fl_date3[1] & fl_date <= input$fl_date3[2], crs_dep_time >= input$crs_dep_time3[1] & crs_dep_time <= input$crs_dep_time3[2]) %>%
+     
+       filter(fl_date >= input$fl_date3[1] & fl_date <= input$fl_date3[2], crs_dep_time >= input$crs_dep_time3[1] & crs_dep_time <= input$crs_dep_time3[2]) %>%
       
       group_by(op_unique_carrier) %>%
       
       #I wanted only the number of delayed flights, taking the length.
+      
       mutate(delcount= length(dep_del15[dep_del15 == "Delayed for More than 15 Minutes"])) %>%
       
       #The total number of glihts is calculated.
+      
       mutate(aircount= n()) %>%
       
       #To sort by airline, I grouped by carrier.
@@ -612,11 +688,12 @@ server <- function(input, output) {
       
       summarize(freqdel=mean(freqdel)) %>%
       
-      #I draw the ggplot for a histogram, with departure time distributed across the x-axis. I colored the plot dark blue.
+      #I draw the ggplot for a histogram, with departure time distributed across the x-axis and ordered in descending order. I colored the plot dark blue.
       
-      ggplot(aes(x=op_unique_carrier, y=freqdel)) + geom_col(fill="#C0C0C0") +
+      ggplot(aes(x=reorder(op_unique_carrier,-freqdel), y=freqdel)) + geom_col(fill="#C0C0C0") +
       
       #A classic theme is selected.
+      
       theme_classic() +
       
       #The axis titles are labeled.
@@ -629,6 +706,7 @@ server <- function(input, output) {
   })
   
   #I created a third graph that looks at distribution of delayed flights across all of the destinations, using a bar chart.
+  
   output$bar2 <-renderPlot({
   
   #Departure time is made numeric to allow for it to be represented as a continuous variable across the x-axis.
@@ -647,14 +725,16 @@ server <- function(input, output) {
   mutate(delcount= length(dep_del15[dep_del15 == "Delayed for More than 15 Minutes"])) %>%
   
   #The total number of flights is calculated.
-  mutate(aircount= n()) %>%
+  
+    mutate(aircount= n()) %>%
   
   #To sort by destination, I grouped by city name.
   
   group_by(dest_city_name) %>%
   
   #The frequency of delay is calculated through the percentage of delayed over total flights.
-  mutate(freqdel= delcount/aircount*100) %>%
+  
+    mutate(freqdel= delcount/aircount*100) %>%
   
   #To represent through one value, I took the mean, although it is the same value.
   
@@ -671,7 +751,8 @@ server <- function(input, output) {
   ggplot(aes(x=reorder(dest_city_name,-freqdel), y=freqdel)) + geom_col(fill="#8b0000") +
   
   #A classic theme is selected.
-  theme_classic() +
+  
+    theme_classic() +
   
   #The axis titles are labeled.
   
